@@ -51,7 +51,7 @@ COMMIT;
 -- since we rolled back all the transactions, then we have returned the credit for all accounts.
  
 -- Ex1.2
-ALTER TABLE accounts ADD COLUMN BankName varchar(100);
+ALTER TABLE accounts ADD COLUMN BankName varchar(50);
 INSERT INTO accounts(Name, Credit) VALUES ('Fees', 0); -- add the extra row for the Fees
 
 UPDATE accounts

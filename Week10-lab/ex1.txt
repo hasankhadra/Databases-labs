@@ -1,0 +1,122 @@
+-- ex1.1 (read committed)
+
+CREATE TABLE public.account
+(
+    username character varying(20) NOT NULL,
+    fullname character varying(50) NOT NULL,
+    balance integer NOT NULL,
+    group_id smallint NOT NULL,
+    PRIMARY KEY (username)
+);
+INSERT INTO account(username, fullname, balance, group_id) VALUES
+('jones',    'Alice Jones',      82,  1),
+('bitdiddl', 'Ben Bitdiddle',    65,  1),
+('mike',     'Michael Dole',     73,  2),
+('alyssa',   'Alyssa P. Hacker', 79,  3),
+('bbrown',   'Bob Brown',        100, 3);
+
+-- Task 1.1 (read commited)
+-- Both terminals:
+-- Change default isolation level for future transactions
+SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL READ COMMITTED;
+
+-- 1. Terminal 1:
+BEGIN;
+SELECT * FROM account;
+
+-- 2. Terminal 2:
+BEGIN;
+UPDATE account SET username = 'ajones' WHERE fullname = 'Alice Jones';
+
+-- 3. 4. Terminal 1:
+SELECT * FROM account;
+-- Outputs differ: only the second terminal shows the updated username,
+-- since the change was not commited yet, and the actual database update
+-- will be performed after COMMIT.
+
+-- 5. Terminal 2:
+COMMIT;
+-- Terminal 1, Terminal 2:
+SELECT * FROM account;
+-- At this moment both terminals show the updated username.
+
+-- 6. Terminal 2:
+BEGIN;
+
+-- 7. Terminal 1:
+UPDATE account SET balance = balance + 10 WHERE username = 'ajones';
+
+-- 8. Terminal 2:
+UPDATE account SET balance = balance + 20 WHERE username = 'ajones';
+-- No output; waits for the first transaction to be finished / rolled back
+
+-- 9. Terminal 1:
+COMMIT;
+
+-- 10. Terminal 2:
+ROLLBACK;
+
+
+
+
+
+
+
+-- ex1.2 (repeatable read)
+
+-- Both terminals:
+-- Change default isolation level for future transactions
+SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+
+-- Any terminal:
+-- Recreate the entries
+DELETE FROM account;
+INSERT INTO account(username, fullname, balance, group_id) VALUES
+('jones',    'Alice Jones',      82,  1),
+('bitdiddl', 'Ben Bitdiddle',    65,  1),
+('mike',     'Michael Dole',     73,  2),
+('alyssa',   'Alyssa P. Hacker', 79,  3),
+('bbrown',   'Bob Brown',        100, 3);
+
+-- 1. Terminal 1:
+BEGIN;
+SELECT * FROM account;
+
+-- 2. Terminal 2:
+BEGIN;
+UPDATE account SET username = 'ajones' WHERE fullname = 'Alice Jones';
+
+-- 3. 4. Terminal 1:
+SELECT * FROM account;
+-- Outputs differ: only the second terminal shows the updated username,
+-- since the change was not commited yet, and the actual database update
+-- will be performed after COMMIT.
+
+-- 5. Terminal 2:
+COMMIT;
+-- Terminal 1, Terminal 2:
+SELECT * FROM account;
+-- Outputs still differ: Repeatable read means that transaction 1
+-- keeps the values from the start of the transaction (ignoring commit
+-- of transaction 2)
+
+-- 6. Terminal 2:
+BEGIN;
+
+-- 7. Terminal 1:
+UPDATE account SET balance = balance + 10 WHERE username = 'jones';
+-- Note: using the old value since the username was not changed
+-- in this transaction.
+-- Output:
+-- ERROR:  could not serialize access due to concurrent update
+
+-- 8. Terminal 2:
+UPDATE account SET balance = balance + 20 WHERE username = 'ajones';
+-- Finishes successfully, nothing interfered this transaction.
+
+-- 9. Terminal 1:
+COMMIT;
+-- Actually ROLLBACK happens due to previous error on UPDATE
+
+-- 10. Terminal 2:
+ROLLBACK;

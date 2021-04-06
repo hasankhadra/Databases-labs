@@ -1,0 +1,74 @@
+-- ex2.1 (read committed)
+
+-- Both terminals:
+-- Change default isolation level for future transactions
+SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL READ COMMITTED;
+
+-- Any terminal:
+-- Recreate the entries
+DELETE FROM account;
+INSERT INTO account(username, fullname, balance, group_id) VALUES
+('jones',    'Alice Jones',      82,  1),
+('bitdiddl', 'Ben Bitdiddle',    65,  1),
+('mike',     'Michael Dole',     73,  2),
+('alyssa',   'Alyssa P. Hacker', 79,  3),
+('bbrown',   'Bob Brown',        100, 3);
+
+-- Start a transaction (T1 & T2)
+BEGIN;
+
+-- Read accounts with group_id=2 (T1)
+SELECT * FROM account WHERE group_id=2;
+
+-- Move Bob to group 2 (T2)
+UPDATE account SET group_id=2 WHERE username = 'bbrown';
+
+-- Read accounts with group_id=2 (T1)
+SELECT * FROM account where group_id=2;
+
+-- Update selected accounts balances by +15 (T1)
+UPDATE account SET balance = balance + 15 WHERE group_id=2;
+
+-- Commit transaction (T1 & T2)
+COMMIT;
+
+-- As a result, we have only Michael with an updated balance, however, Bob was moved to group 2.
+
+
+
+
+
+-- ex2.2 (repeatable read)
+-- Both terminals:
+-- Change default isolation level for future transactions
+SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+
+-- Any terminal:
+-- Recreate the entries
+DELETE FROM account;
+INSERT INTO account(username, fullname, balance, group_id) VALUES
+('jones',    'Alice Jones',      82,  1),
+('bitdiddl', 'Ben Bitdiddle',    65,  1),
+('mike',     'Michael Dole',     73,  2),
+('alyssa',   'Alyssa P. Hacker', 79,  3),
+('bbrown',   'Bob Brown',        100, 3);
+
+-- Start a transaction (T1 & T2)
+BEGIN;
+
+-- Read accounts with group_id=2 (T1)
+SELECT * FROM account WHERE group_id=2;
+
+-- Move Bob to group 2 (T2)
+UPDATE account SET group_id=2 WHERE username = 'bbrown';
+
+-- Read accounts with group_id=2 (T1)
+SELECT * FROM account where group_id=2;
+
+-- Update selected accounts balances by +15 (T1)
+UPDATE account SET balance = balance + 15 WHERE group_id=2;
+
+-- Commit transaction (T1 & T2)
+COMMIT;
+
+-- The results are the same as for task 2.1, since there are no concurrent updates.
